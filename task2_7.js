@@ -8,6 +8,7 @@ console.log(myGraph.toString());
 
 console.log('Добвили вершину Е ');
 myGraph.addVertex('E');
+console.log(myGraph.toString());
 
 const isolatedVertices = myGraph.findIsolatedVertices();
 
