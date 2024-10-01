@@ -1,0 +1,10 @@
+# und
+A,B
+A,C
+B,C
+B,D
+C,E
+D,E 
+F,G 
+H,H 
+I 

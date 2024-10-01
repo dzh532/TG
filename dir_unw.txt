@@ -1,0 +1,11 @@
+# dir
+A,B
+A,C
+B,D
+C,D
+D,E
+E,A 
+F,G
+G,H
+H,F 
+I  
