@@ -356,6 +356,27 @@ class Graph
         rl.close();
     }
 
+    getComplement() {
+        const complementGraph = new Graph();
+        const vertices = Object.keys(this.adjacencyList);
+
+        for (const vertex of vertices) {
+            complementGraph.adjacencyList[vertex] = [];
+        }
+
+        for (let i = 0; i < vertices.length; i++) {
+            for (let j = 0; j < vertices.length; j++) {
+                const vertex1 = vertices[i];
+                const vertex2 = vertices[j];
+
+                if (vertex1 !== vertex2 && !this.adjacencyList[vertex1].includes(vertex2)) {
+                    complementGraph.addEdge(vertex1, vertex2);
+                }
+            }
+        }
+
+        return complementGraph;
+    }
 }
 
 let graph;
