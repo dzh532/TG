@@ -428,9 +428,9 @@ function handleUserInput()
                 break;
 
             case '6':
-                graph = Graph.createTestGraph();
+                const completeGraph = graph.createCompleteGraph(7, false, false);
+                console.log(completeGraph.toString());
                 console.log('Тестовый граф успешно создан:');
-                console.log(graph.toString());
                 handleUserInput();
                 break;
 
@@ -470,14 +470,6 @@ function handleUserInput()
             case '13':
                 graph.closeInput();
                 break;
-
-            case '14':
-                // graph.createCompleteGraph(7);
-                const completeGraph = graph.createCompleteGraph(7, false, false);
-                console.log(completeGraph.toString());
-                handleUserInput(); 
-                break;
-
 
             default:
                 console.log('Неверный выбор. Попробуйте снова.');
