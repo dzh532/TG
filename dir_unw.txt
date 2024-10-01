@@ -1,11 +1,7 @@
-# dir
+# dir_unw
+A,
+B,
+C,
+D,
 A,B
 A,C
-B,D
-C,D
-D,E
-E,A 
-F,G
-G,H
-H,F 
-I  

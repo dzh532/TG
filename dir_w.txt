@@ -1,10 +1,9 @@
-# Dir
+# dir_w
+A,
+B,
+C,
+D,
+E,
 A,B,3
 A,C,2
-B,D,4
-C,D,1
-D,E,5
-E,A,2
-F,G,1
-G,H,3
-H,F,2
+D,E,1

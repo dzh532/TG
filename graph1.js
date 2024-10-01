@@ -44,6 +44,7 @@ class Graph
         });
 
         let isDirected = false;
+        let isWeighted = false;
 
         for await (const line of rl) 
         {
@@ -51,24 +52,44 @@ class Graph
 
             if (trimmedLine.startsWith('#')) 
             {
-                if (trimmedLine.includes('dir')) isDirected = true; 
-                else if (trimmedLine.includes('und')) isDirected = false;
+                if (trimmedLine.includes('dir_w')) 
+                {
+                    isDirected = true; 
+                    isWeighted = true;
+                }
+                else if (trimmedLine.includes('und_w')) 
+                {
+                    isDirected = false;
+                    isWeighted = true;
+                }
+                else if (trimmedLine.includes('dir_unw')) 
+                {
+                    isDirected = true; 
+                    isWeighted = false;
+                }
+                else if (trimmedLine.includes('und_unw')) 
+                {
+                    isDirected = false;
+                    isWeighted = false;
+                }
 
                 continue;
             }
+
+            graph.directed = isDirected;
+            graph.weighted = isWeighted;
 
             if (trimmedLine === '' || trimmedLine.startsWith('#')) continue;
             
             const parts = trimmedLine.split(',');
             if (parts.length < 2) continue;
 
-            const source = parts[0].trim();
-            const destination = parts[1].trim();
+            const edgeFrom = parts[0].trim();
+            const edgeTo = parts[1].trim();
             const weight = parts.length === 3 ? parseInt(parts[2].trim()) : 1;
 
-            graph.directed = isDirected;
-
-            graph.addEdge(source, destination, weight);
+            if (edgeTo.length > 0) graph.addEdge(edgeFrom, edgeTo, weight);
+            else graph.addVertex(edgeFrom);
         }
         return graph;
     }
@@ -76,9 +97,20 @@ class Graph
     exportToFile(filePath) 
     {
         let result = '';
-        for (const vertex in this.adjacencyList) 
-            for (const edge of this.adjacencyList[vertex]) 
-                result += `${vertex},${edge.node},${edge.weight}\n`;
+
+        const vertices = Object.keys(this.adjacencyList);
+        result += vertices.join(',\n') + ',\n';
+
+        if (this.weighted)
+            for (const vertex in this.adjacencyList) 
+                for (const edge of this.adjacencyList[vertex]) 
+                    result += `${vertex},${edge.node},${edge.weight}\n`;
+
+        else
+            for (const vertex in this.adjacencyList) 
+                for (const edge of this.adjacencyList[vertex]) 
+                    result += `${vertex},${edge.node}\n`;
+
 
         fs.writeFile(filePath, result, (err) => 
         {
@@ -102,14 +134,24 @@ class Graph
         if (this.weighted)
         {
             for (const vertex in this.adjacencyList) 
-                for (const edge of this.adjacencyList[vertex]) 
-                    result += `${vertex} -> ${edge.node}, ${edge.weight}\n`;
+            {
+                const edges = this.adjacencyList[vertex];
+
+                const edgeList = edges.map(edge => this.weighted ? `${edge.node} (w: ${edge.weight})` : edge.node);
+
+                result += `${vertex} -> ${edgeList.join(', ')}\n`;
+            }
         }
         else
         {
             for (const vertex in this.adjacencyList) 
-                for (const edge of this.adjacencyList[vertex]) 
-                    result += `${vertex} -> ${edge.node}\n`;
+            {
+                const edges = this.adjacencyList[vertex];
+
+                const edgeList = edges.map(edge => this.weighted ? `${edge.node} (${edge.weight})` : edge.node);
+
+                result += `${vertex} -> ${edgeList.join(', ')}\n`;
+            }
         }
 
         fs.writeFile(filePath, result, (err) => 
@@ -143,21 +185,20 @@ class Graph
     createCompleteGraph(numVertices, directed = false, weighted = false) {
         const graph = new Graph(directed, weighted);
 
-        // Добавляем вершины
-        for (let i = 0; i < numVertices; i++) {
+        for (let i = 0; i < numVertices; i++)
             graph.addVertex(`V${i + 1}`);
-        }
 
-        // Добавляем рёбра между всеми парами вершин
-        for (let i = 0; i < numVertices; i++) {
-            for (let j = 0; j < numVertices; j++) {
-                if (i !== j) { // Избегаем самосоединений
+        for (let i = 0; i < numVertices; i++) 
+            {
+            for (let j = 0; j < numVertices; j++) 
+            {
+                if (i !== j) 
+                {
                     const weight = weighted ? Math.floor(Math.random() * 10) + 1 : 1; // Случайный вес от 1 до 10
                     graph.addEdge(`V${i + 1}`, `V${j + 1}`, weight);
                 }
             }
         }
-
         return graph;
     }
 
@@ -170,44 +211,50 @@ class Graph
             this.adjacencyList[vertex] = [];
             console.log(`Вершина ${vertex} добавлена.`);
         }
-        else console.log(`Вершина "${vertex}" уже добавлена`);
+        else console.log(`Вершина "${vertex}" уже существует`);
     }
 
     // Добавление ребра
-    addEdge(source, destination, weight = 1) 
+    addEdge(edgeFrom, edgeTo, weight = 1) 
     {
         let ok = true;
-        if (!this.adjacencyList[source])
+        if (!this.adjacencyList[edgeFrom])
         {
-            console.log(`Вершины ${source} не существует`);
+            console.log(`Вершины ${edgeFrom} не существует`);
             ok = false;
         }
 
-        if (!this.adjacencyList[destination])
+        if (!this.adjacencyList[edgeTo])
         {
-            console.log(`Вершины ${destination} не существует`);
+            console.log(`Вершины ${edgeTo} не существует`);
             ok = false;
         }
         if (ok)
         {
-            if (this.weighted)
+            const edgeExists = this.adjacencyList[edgeFrom].some(edge => edge.node === edgeTo);
+            // const edgeExists = this.adjacencyList[edgeFrom].some(vertex => vertex === edgeTo);
+            if (!edgeExists)
             {
-                this.adjacencyList[source].push({ node: destination, weight });
-            
-                if (!this.directed)
-                    this.adjacencyList[destination].push({ node: source, weight });
+                if (this.weighted)
+                {
+                        this.adjacencyList[edgeFrom].push({ node: edgeTo, weight });
+                    
+                        if (!this.directed)
+                            this.adjacencyList[edgeTo].push({ node: edgeFrom, weight });
 
-                console.log(`Ребро от ${source} до ${destination} с весом ${weight} добавлено.`);
-            }
-            else
-            {
-                this.adjacencyList[source].push({ node: destination});
-            
-                if (!this.directed)
-                    this.adjacencyList[destination].push({ node: source});
+                        console.log(`Ребро от ${edgeFrom} до ${edgeTo} с весом ${weight} добавлено.`);
+                }
+                else
+                {
+                    this.adjacencyList[edgeFrom].push({ node: edgeTo});
+                
+                    if (!this.directed)
+                        this.adjacencyList[edgeTo].push({ node: edgeFrom});
 
-                console.log(`Ребро от ${source} до ${destination} добавлено.`);
+                    console.log(`Ребро от ${edgeFrom} до ${edgeTo} добавлено.`);
+                }
             }
+            else console.log(`Данное ребро уже существует`);
         }
     }
 
@@ -228,31 +275,31 @@ class Graph
     }
 
     // Удаление ребра
-    removeEdge(source, destination) 
+    removeEdge(edgeFrom, edgeTo) 
     {
         let ok = true;
 
-        if (!this.adjacencyList[source])
+        if (!this.adjacencyList[edgeFrom])
         {
-            console.log(`Вершины ${source} не существует.`);
+            console.log(`Вершины ${edgeFrom} не существует.`);
             ok = false;
         }
 
-        if (!this.adjacencyList[destination])
+        if (!this.adjacencyList[edgeTo])
         {
-            console.log(`Вершины ${destination} не существует.`);
+            console.log(`Вершины ${edgeTo} не существует.`);
             ok = false;
         }
 
         if (ok)
         {
-            if (this.adjacencyList[source])
-                this.adjacencyList[source] = this.adjacencyList[source].filter(edge => edge.node !== destination);
+            if (this.adjacencyList[edgeFrom])
+                this.adjacencyList[edgeFrom] = this.adjacencyList[edgeFrom].filter(edge => edge.node !== edgeTo);
             
-            if (!this.directed && this.adjacencyList[destination])
-                this.adjacencyList[destination] = this.adjacencyList[destination].filter(edge => edge.node !== source);
+            if (!this.directed && this.adjacencyList[edgeTo])
+                this.adjacencyList[edgeTo] = this.adjacencyList[edgeTo].filter(edge => edge.node !== edgeFrom);
 
-            console.log(`Ребро от ${source} до ${destination} удалено.`);
+            console.log(`Ребро от ${edgeFrom} до ${edgeTo} удалено.`);
         }
     }
 
@@ -263,7 +310,7 @@ class Graph
         if (this.weighted)
         {
             for (const vertex in this.adjacencyList)
-                result += `${vertex} -> ${this.adjacencyList[vertex].map(edge => `${edge.node} (weight: ${edge.weight})`).join(', ')}\n`;
+                result += `${vertex} -> ${this.adjacencyList[vertex].map(edge => `${edge.node} (w: ${edge.weight})`).join(', ')}\n`;
         }
         else
         {
@@ -334,8 +381,13 @@ async function openFileAndLoadGraph()
 function isEmpty(vertex)
 {
     const isEmp = vertex => vertex.trim() === '';
-    if (isEmp) return true;
-    else return false;
+    return isEmp(vertex);
+}
+
+function emptyElse()
+{
+    console.log(`Имя вершины не может быть пустое`);
+    handleUserInput();
 }
 
 // Функция обработки пользовательского ввода
@@ -350,20 +402,23 @@ function handleUserInput()
             case '1':
                 rl.question('Введите имя вершины: ', (vertex) => 
                 {
-                    if (!isEmpty(vertex)) graph.addVertex(vertex);
-                    else console.log(`Имя вершины не может быть пустое`);
-                    handleUserInput();
+                    if (!isEmpty(vertex)) 
+                    {
+                        graph.addVertex(vertex);
+                        handleUserInput();
+                    }
+                    else emptyElse();
                 });
                 break;
 
             case '2':
-                rl.question('Введите исходную вершину: ', (source) => 
+                rl.question('Введите исходную вершину: ', (edgeFrom) => 
                 {
-                    if (!isEmpty(source))
+                    if (!isEmpty(edgeFrom))
                     { 
-                        rl.question('Введите конечную вершину: ', (destination) => 
+                        rl.question('Введите конечную вершину: ', (edgeTo) => 
                         {
-                            if (!isEmpty(destination))
+                            if (!isEmpty(edgeTo))
                             {
                                 if (graph.weighted)
                                 {
@@ -371,23 +426,22 @@ function handleUserInput()
                                     {
                                         if (!isEmpty(weight))
                                         {
-                                            graph.addEdge(source, destination, weight ? parseInt(weight) : 1);
-                                            handleUserInput();
+                                            graph.addEdge(edgeFrom, edgeTo, weight ? parseInt(weight) : 1);
                                         }
                                         else console.log(`Имя вершины не может быть пустое`);
+                                        handleUserInput();
                                     });
                                 }
                                 else
                                 {
-                                    graph.addEdge(source, destination);
+                                    graph.addEdge(edgeFrom, edgeTo);
                                     handleUserInput();
                                 }
                             }
-                            else console.log(`Имя вершины не может быть пустое`);
-
+                            else emptyElse();
                         });
                     }
-                    else console.log(`Имя вершины не может быть пустое`);
+                    else emptyElse();
                 });
                 break;
 
@@ -399,26 +453,26 @@ function handleUserInput()
                         graph.removeVertex(vertex);
                         handleUserInput();
                     }
-                    else console.log(`Имя вершины не может быть пустое`);
+                    else emptyElse();
                 });
                 break;
 
             case '4':
-                rl.question('Введите исходную вершину: ', (source) => 
+                rl.question('Введите исходную вершину: ', (edgeFrom) => 
                 {
-                    if (!isEmpty(source))
+                    if (!isEmpty(edgeFrom))
                     {
-                        rl.question('Введите конечную вершину: ', (destination) => 
+                        rl.question('Введите конечную вершину: ', (edgeTo) => 
                         {
-                            if (!isEmpty(source))
+                            if (!isEmpty(edgeFrom))
                             {
-                                graph.removeEdge(source, destination);
+                                graph.removeEdge(edgeFrom, edgeTo);
                                 handleUserInput();
                             }
-                            else console.log(`Имя вершины не может быть пустое`);
+                            else emptyElse();
                         });
                     }
-                    else console.log(`Имя вершины не может быть пустое`);
+                    else emptyElse();
                 });
                 break;
 
@@ -428,8 +482,8 @@ function handleUserInput()
                 break;
 
             case '6':
-                const completeGraph = graph.createCompleteGraph(7, false, false);
-                console.log(completeGraph.toString());
+                const completeGraph = graph.createCompleteGraph(7, false, true);
+                graph = completeGraph;
                 console.log('Тестовый граф успешно создан:');
                 handleUserInput();
                 break;

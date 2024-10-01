@@ -1,4 +1,13 @@
-# und
+# und_unw
+A,
+B,
+C,
+D,
+E,
+F,
+G,
+H,
+I,
 A,B
 A,C
 B,C
@@ -6,5 +15,4 @@ B,D
 C,E
 D,E 
 F,G 
-H,H 
-I 
+H,H  

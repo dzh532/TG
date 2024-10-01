@@ -1,4 +1,12 @@
-# und
+# und_w
+A,
+B,
+C,
+D,
+E,
+F,
+G,
+H,
 A,B,4
 A,C,2
 B,C,1
