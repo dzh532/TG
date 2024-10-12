@@ -232,7 +232,6 @@ class Graph
         if (ok)
         {
             const edgeExists = this.adjacencyList[edgeFrom].some(edge => edge.node === edgeTo);
-            // const edgeExists = this.adjacencyList[edgeFrom].some(vertex => vertex === edgeTo);
             if (!edgeExists)
             {
                 if (this.weighted)
@@ -301,6 +300,7 @@ class Graph
 
             console.log(`Ребро от ${edgeFrom} до ${edgeTo} удалено.`);
         }
+        // else console.log(`Данное ребро уже существует`);
     }
 
     // Вывод списка смежности
@@ -322,29 +322,58 @@ class Graph
 
     hasVertices() 
     {
-    for (const vertex in this.adjacencyList)
-        return false;
-
-    return true; // Если нет свойств, то граф пустой
-    }
-
-    findIsolatedVertices()
-    {
-        const isolatedVertices = [];
-        
         for (const vertex in this.adjacencyList)
-            if (this.adjacencyList[vertex].length === 0)
-                isolatedVertices.push(vertex);
+            return false;
 
-        return isolatedVertices;
+        return true; // Если нет свойств, то граф пустой
     }
 
+    // полустепень исхода
     outDegree(vertex) 
     {
         if (!this.adjacencyList[vertex])
-            return 0;
+        {
+            console.log(`Вершины ${vertex} не существует.`);
+            return -1;
+        }
         return this.adjacencyList[vertex].length;
     }
+
+    // полустепень захода
+    inDegree(vertex) 
+    {
+        if (!this.adjacencyList[vertex]) 
+        {
+            console.log(`Вершины ${vertex} не существует.`);
+            return -1;
+        }
+    
+        let count = 0;
+    
+        for (let v in this.adjacencyList)
+            if (this.adjacencyList[v].some(edge => edge.node === vertex))
+                count++;
+    
+        return count;
+    }
+
+    // поиск исзолированных вершин
+    findIsolatedVertices() 
+    {
+        const isolatedVertices = [];
+    
+        for (const vertex in this.adjacencyList) 
+        {
+            const degreeOut = this.outDegree(vertex);
+            const degreeIn = this.inDegree(vertex);
+
+            if (degreeOut === 0 && degreeIn === 0)
+                isolatedVertices.push(vertex);
+        }
+    
+        return isolatedVertices;
+    }
+
 
     openFileFromFile()
     {
@@ -356,27 +385,34 @@ class Graph
         rl.close();
     }
 
+    addOrDelEdge(fromVertex, toVertex) 
+    {
+        if (this.adjacencyList[fromVertex] && this.adjacencyList[toVertex]) 
+        {
+            const edgeIndex = this.adjacencyList[fromVertex].findIndex(edge => edge.node === toVertex);
+            if (edgeIndex === -1) this.adjacencyList[fromVertex].push({ node: toVertex });
+            else this.adjacencyList[fromVertex].splice(edgeIndex, 1);
+        }
+    }
+
+    // дополнение орграфа
     getComplement() {
-        const complementGraph = new Graph();
         const vertices = Object.keys(this.adjacencyList);
 
-        for (const vertex of vertices) {
-            complementGraph.adjacencyList[vertex] = [];
-        }
-
-        for (let i = 0; i < vertices.length; i++) {
-            for (let j = 0; j < vertices.length; j++) {
-                const vertex1 = vertices[i];
-                const vertex2 = vertices[j];
-
-                if (vertex1 !== vertex2 && !this.adjacencyList[vertex1].includes(vertex2)) {
-                    complementGraph.addEdge(vertex1, vertex2);
+        for (let i = 0; i < vertices.length; i++) 
+        {
+            for (let j = 0; j < vertices.length; j++) 
+            {
+                if (i !== j) 
+                {
+                    const fromVertex = vertices[i];
+                    const toVertex = vertices[j];
+                    this.addOrDelEdge(fromVertex, toVertex); 
                 }
             }
         }
-
-        return complementGraph;
     }
+
 }
 
 let graph;
@@ -503,7 +539,7 @@ function handleUserInput()
                 break;
 
             case '6':
-                const completeGraph = graph.createCompleteGraph(7, false, true);
+                const completeGraph = graph.createCompleteGraph(7, graph.directed, graph.weighted);
                 graph = completeGraph;
                 console.log('Тестовый граф успешно создан:');
                 handleUserInput();
@@ -543,6 +579,39 @@ function handleUserInput()
                 break;
 
             case '13':
+                const isolatedVertices = graph.findIsolatedVertices();
+                if (isolatedVertices.length > 0) 
+                    console.log('Изолированные вершины:', isolatedVertices);
+                else
+                    console.log('Изолированных вершин нет');
+
+                handleUserInput(); 
+                break;
+
+                
+            case '14':
+                rl.question('Введите имя вершины для поиска полустепени исхода: ', (vertex) => 
+                {
+                    if (!isEmpty(vertex))
+                    {
+                        const degree = graph.outDegree(vertex);
+                        if (degree !== -1) 
+                            console.log(`Полустепень исхода для вершины ${vertex}: ${degree}`);   
+                        handleUserInput(); 
+
+                    }
+                    else emptyElse();
+                });
+                break;
+
+            case '15':
+                graph.getComplement();
+                console.log("\nДополненный орграф:");
+                console.log(graph.toString());
+                handleUserInput(); 
+                break;
+
+            case '16':
                 graph.closeInput();
                 break;
 
@@ -573,7 +642,12 @@ function showMenu()
     console.log('10. Сменить ориентированность');
     console.log('11. Сменить взвешенность');
     console.log('12. Сделать копию');
-    console.log('13. Выйти');
+    console.log('----- Задания -----');
+    console.log('13. Изолированые вершины орграфа');
+    console.log('14. Полустепень исхода орграфа');
+    console.log('15. Орграф, являющийся дополнением');
+    console.log('-------------------');
+    console.log('16. Выйти');
     console.log('==============================\n');
 }
 
