@@ -17,5 +17,7 @@ if (isolatedVertices.length > 0)
 else
     console.log('Изолированных вершин нет');
 
-myGraph.closeInput();
+// myGraph.handleUserInput();
+
+// myGraph.closeInput();
 
