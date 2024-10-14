@@ -14,6 +14,7 @@ class Graph
     constructor(directed = false, weighted = false) 
     {
         this.adjacencyList = {};
+        this.transposedList = {};
         this.directed = directed;
         this.weighted = weighted;
     }
@@ -210,6 +211,7 @@ class Graph
         {
             this.adjacencyList[vertex] = [];
             console.log(`Вершина ${vertex} добавлена.`);
+            this.transposedList[vertex] = [];
         }
         else console.log(`Вершина "${vertex}" уже существует`);
     }
@@ -237,18 +239,27 @@ class Graph
                 if (this.weighted)
                 {
                         this.adjacencyList[edgeFrom].push({ node: edgeTo, weight });
+                        this.transposedList[edgeTo].push({ node: edgeFrom }); // в инвертированный граф
+
                     
                         if (!this.directed)
+                        {
                             this.adjacencyList[edgeTo].push({ node: edgeFrom, weight });
+                            this.transposedList[edgeFrom].push({ node: edgeTo }); // в инвертированный граф
 
+                        }
                         console.log(`Ребро от ${edgeFrom} до ${edgeTo} с весом ${weight} добавлено.`);
                 }
                 else
                 {
                     this.adjacencyList[edgeFrom].push({ node: edgeTo});
+                    this.transposedList[edgeTo].push({ node: edgeFrom }); // в инвертированный граф
                 
                     if (!this.directed)
+                    {
                         this.adjacencyList[edgeTo].push({ node: edgeFrom});
+                        this.transposedList[edgeFrom].push({ node: edgeTo }); // в инвертированный граф
+                    }
 
                     console.log(`Ребро от ${edgeFrom} до ${edgeTo} добавлено.`);
                 }
@@ -292,15 +303,19 @@ class Graph
 
         if (ok)
         {
-            if (this.adjacencyList[edgeFrom])
-                this.adjacencyList[edgeFrom] = this.adjacencyList[edgeFrom].filter(edge => edge.node !== edgeTo);
-            
-            if (!this.directed && this.adjacencyList[edgeTo])
-                this.adjacencyList[edgeTo] = this.adjacencyList[edgeTo].filter(edge => edge.node !== edgeFrom);
+            const edgeExists = this.adjacencyList[edgeFrom].some(edge => edge.node === edgeTo);
+            if (edgeExists)
+            {
+                if (this.adjacencyList[edgeFrom])
+                    this.adjacencyList[edgeFrom] = this.adjacencyList[edgeFrom].filter(edge => edge.node !== edgeTo);
+                
+                if (!this.directed && this.adjacencyList[edgeTo])
+                    this.adjacencyList[edgeTo] = this.adjacencyList[edgeTo].filter(edge => edge.node !== edgeFrom);
 
-            console.log(`Ребро от ${edgeFrom} до ${edgeTo} удалено.`);
+                console.log(`Ребро от ${edgeFrom} до ${edgeTo} удалено.`);
+            }
+            else console.log(`Данного ребра не существует`);
         }
-        // else console.log(`Данное ребро уже существует`);
     }
 
     // Вывод списка смежности
@@ -412,6 +427,146 @@ class Graph
             }
         }
     }
+
+    // Найти путь, соединяющий вершины u1 и u2 и не проходящий через вершину v
+    findPath(u1, u2, v) {
+        const visited = new Set();
+        const path = [];
+    
+        const dfs = (current) => 
+        {
+            if (current === u2) 
+            {
+                path.push(current);
+                return true; // путь найден
+            }
+    
+            visited.add(current);
+            path.push(current);
+    
+            if (!this.adjacencyList[current]) 
+            {
+                console.log(`Вершина ${current} отсутствует в графе.`);
+                return false;
+            }
+    
+            for (const edge of this.adjacencyList[current]) 
+            {
+                const neighbor = edge.node;
+    
+                if (!visited.has(neighbor) && neighbor !== v) 
+                    if (dfs(neighbor)) 
+                        return true;
+            }
+    
+            path.pop(); 
+            return false;
+        };
+    
+        dfs(u1);
+        
+        return path.length > 0 && path[path.length - 1] === u2 ? path : null;
+    }
+
+    // Найти сильно связные компоненты орграфа
+    // Первый проход BFS для получения порядка выхода
+    bfsFirstPass(vertex, visited, stack) {
+        const queue = [vertex];
+        visited.add(vertex);
+
+        while (queue.length > 0) {
+            const current = queue.shift();
+            for (const edge of this.adjacencyList[current]) 
+            {
+                const neighbor = edge.node;
+                if (!visited.has(neighbor)) {
+                    visited.add(neighbor);
+                    queue.push(neighbor);
+                }
+            }
+            stack.push(current);
+        }
+    }
+
+    // Второй проход BFS для нахождения ССК
+    bfsSecondPass(vertex, visited, component) {
+        const queue = [vertex];
+        visited.add(vertex);
+        component.push(vertex);
+
+        while (queue.length > 0) 
+        {
+            const current = queue.shift();
+            for (const edge of this.transposedList[current]) 
+            {
+                const neighbor = edge.node;
+                if (!visited.has(neighbor)) {
+                    visited.add(neighbor);
+                    queue.push(neighbor);
+                    component.push(neighbor);
+                }
+            }
+        }
+    }
+
+    findStronglyConnectedComponents() {
+        const visited = new Set();
+        const stack = [];
+
+        // Первый проход: заполняем стек порядком выхода
+        for (const vertex in this.adjacencyList) {
+            if (!visited.has(vertex)) {
+                this.bfsFirstPass(vertex, visited, stack);
+            }
+        }
+
+        // Второй проход: находим ССК
+        visited.clear();
+        const stronglyConnectedComponents = [];
+
+        while (stack.length > 0) {
+            const vertex = stack.pop();
+            if (!visited.has(vertex)) {
+                const component = [];
+                this.bfsSecondPass(vertex, visited, component);
+                stronglyConnectedComponents.push(component);
+            }
+        }
+
+        // Добавляем отдельные компоненты для изолированных вершин
+        for (const vertex in this.adjacencyList) {
+            if (!visited.has(vertex)) {
+                stronglyConnectedComponents.push([vertex]);
+            }
+        }
+
+        return stronglyConnectedComponents;
+    }
+
+    // findStronglyConnectedComponents() {
+    //     const visited = new Set();
+    //     const stack = [];
+
+    //     for (const vertex in this.adjacencyList) {
+    //         if (!visited.has(vertex)) {
+    //             this.bfsFirstPass(vertex, visited, stack);
+    //         }
+    //     }
+
+    //     visited.clear();
+    //     const stronglyConnectedComponents = [];
+
+    //     while (stack.length > 0) {
+    //         const vertex = stack.pop();
+    //         if (!visited.has(vertex)) {
+    //             const component = [];
+    //             this.bfsSecondPass(vertex, visited, component);
+    //             stronglyConnectedComponents.push(component);
+    //         }
+    //     }
+
+    //     return stronglyConnectedComponents;
+    // }
 
 }
 
@@ -615,6 +770,53 @@ function handleUserInput()
                 graph.closeInput();
                 break;
 
+            case '17':
+                rl.question('Введите имя вершины ОТ которой нужно найти путь: ', (u1) => 
+                {
+                    if (!isEmpty(u1))
+                    {
+                        rl.question('Введите имя вершины ДО которой нужно найти путь: ', (u2) => 
+                        {
+                            if (!isEmpty(u2))
+                            {
+                                rl.question('Введите имя вершины через которую проходить нельзя: ', (v) => 
+                                {
+                                    if (!isEmpty(v))
+                                    {
+                                        const path = graph.findPath(u1, u2, v);
+                                        if (path) console.log(`Путь от ${u1} до ${u2}, не проходя через ${v}: ${path.join(' -> ')}`);
+                                        else console.log(`Нет пути от ${u1} до ${u2}, не проходя через ${v}.`);
+                                        handleUserInput();
+                                    }
+                                    else emptyElse();
+                                });
+                            }
+                            else emptyElse();
+                        });
+                    }
+                    else emptyElse();
+                });
+                break;
+
+            case '18':
+                graph.addVertex('A');
+                graph.addVertex('B');
+                graph.addVertex('C');
+                graph.addVertex('D');
+                graph.addVertex('E');
+
+                graph.addEdge('A', 'B');
+                graph.addEdge('B', 'C');
+                graph.addEdge('C', 'A'); // Цикл между A, B и C
+                graph.addEdge('D', 'E'); // Отдельная компонента
+
+                console.log("Список смежности:", graph.adjacencyList);
+                console.log("Инвертированный список смежности:", graph.transposedList);
+
+                const scc = graph.findStronglyConnectedComponents();
+                console.log("Сильно связные компоненты:", scc);
+                break;
+
             default:
                 console.log('Неверный выбор. Попробуйте снова.');
                 handleUserInput();
@@ -646,6 +848,9 @@ function showMenu()
     console.log('13. Изолированые вершины орграфа');
     console.log('14. Полустепень исхода орграфа');
     console.log('15. Орграф, являющийся дополнением');
+    console.log('-------------------');
+    console.log('17. Обход в глубину');
+    console.log('18. Обход в ширину');
     console.log('-------------------');
     console.log('16. Выйти');
     console.log('==============================\n');
