@@ -1,6 +1,6 @@
 const fs = require('fs');
 const readline = require('readline');
-
+// const { MinPriorityQueue } = require('vanilla-priority-queue');
 
 const rl = readline.createInterface
 ({
@@ -309,6 +309,9 @@ class Graph
                 if (this.adjacencyList[edgeFrom])
                     this.adjacencyList[edgeFrom] = this.adjacencyList[edgeFrom].filter(edge => edge.node !== edgeTo);
                 
+                if (this.transposedList[edgeTo])
+                    this.transposedList[edgeTo] = this.transposedList[edgeTo].filter(edge => edge.node !== edgeFrom);
+
                 if (!this.directed && this.adjacencyList[edgeTo])
                     this.adjacencyList[edgeTo] = this.adjacencyList[edgeTo].filter(edge => edge.node !== edgeFrom);
 
@@ -325,7 +328,7 @@ class Graph
         if (this.weighted)
         {
             for (const vertex in this.adjacencyList)
-                result += `${vertex} -> ${this.adjacencyList[vertex].map(edge => `${edge.node} (w: ${edge.weight})`).join(', ')}\n`;
+                result += `${vertex} -> ${this.adjacencyList[vertex].map(edge => `${edge.node} (${edge.weight})`).join(', ')}\n`;
         }
         else
         {
@@ -410,7 +413,7 @@ class Graph
         }
     }
 
-    // дополнение орграфа
+    // Дополнение орграфа
     getComplement() {
         const vertices = Object.keys(this.adjacencyList);
 
@@ -470,16 +473,19 @@ class Graph
 
     // Найти сильно связные компоненты орграфа
     // Первый проход BFS для получения порядка выхода
-    bfsFirstPass(vertex, visited, stack) {
+    bfsFirstPass(vertex, visited, stack) 
+    {
         const queue = [vertex];
         visited.add(vertex);
 
-        while (queue.length > 0) {
+        while (queue.length > 0) 
+        {
             const current = queue.shift();
             for (const edge of this.adjacencyList[current]) 
             {
                 const neighbor = edge.node;
-                if (!visited.has(neighbor)) {
+                if (!visited.has(neighbor)) 
+                {
                     visited.add(neighbor);
                     queue.push(neighbor);
                 }
@@ -489,7 +495,8 @@ class Graph
     }
 
     // Второй проход BFS для нахождения ССК
-    bfsSecondPass(vertex, visited, component) {
+    bfsSecondPass(vertex, visited, component) 
+    {
         const queue = [vertex];
         visited.add(vertex);
         component.push(vertex);
@@ -500,7 +507,8 @@ class Graph
             for (const edge of this.transposedList[current]) 
             {
                 const neighbor = edge.node;
-                if (!visited.has(neighbor)) {
+                if (!visited.has(neighbor)) 
+                {
                     visited.add(neighbor);
                     queue.push(neighbor);
                     component.push(neighbor);
@@ -509,65 +517,125 @@ class Graph
         }
     }
 
-    findStronglyConnectedComponents() {
+    findStronglyConnectedComponents() 
+    {
         const visited = new Set();
         const stack = [];
-
-        // Первый проход: заполняем стек порядком выхода
-        for (const vertex in this.adjacencyList) {
-            if (!visited.has(vertex)) {
+    
+        // Первый проход
+        for (const vertex in this.adjacencyList) 
+            if (!visited.has(vertex))
                 this.bfsFirstPass(vertex, visited, stack);
-            }
-        }
-
-        // Второй проход: находим ССК
+    
+        // Второй проход
         visited.clear();
         const stronglyConnectedComponents = [];
-
-        while (stack.length > 0) {
-            const vertex = stack.pop();
-            if (!visited.has(vertex)) {
+    
+        while (stack.length > 0)
+        {
+            const vertex = stack.shift();
+            if (!visited.has(vertex)) 
+            {
                 const component = [];
                 this.bfsSecondPass(vertex, visited, component);
                 stronglyConnectedComponents.push(component);
             }
         }
-
+    
         // Добавляем отдельные компоненты для изолированных вершин
-        for (const vertex in this.adjacencyList) {
-            if (!visited.has(vertex)) {
+        for (const vertex in this.adjacencyList)
+            if (!visited.has(vertex))
                 stronglyConnectedComponents.push([vertex]);
-            }
-        }
 
         return stronglyConnectedComponents;
     }
 
-    // findStronglyConnectedComponents() {
-    //     const visited = new Set();
-    //     const stack = [];
+    findMinimumSpanningTree()
+    {
+        const edges = [];
+        
+        for (let vertex in this.adjacencyList) 
+            for (let edge of this.adjacencyList[vertex]) 
+                if (vertex < edge.node)
+                    edges.push({ weight: edge.weight, vertices: [vertex, edge.node] });
 
-    //     for (const vertex in this.adjacencyList) {
-    //         if (!visited.has(vertex)) {
-    //             this.bfsFirstPass(vertex, visited, stack);
-    //         }
-    //     }
+        edges.sort((a, b) => a.weight - b.weight);
 
-    //     visited.clear();
-    //     const stronglyConnectedComponents = [];
+        const parent = {};
+        const rank = {};
 
-    //     while (stack.length > 0) {
-    //         const vertex = stack.pop();
-    //         if (!visited.has(vertex)) {
-    //             const component = [];
-    //             this.bfsSecondPass(vertex, visited, component);
-    //             stronglyConnectedComponents.push(component);
-    //         }
-    //     }
+        for (let vertex in this.adjacencyList) 
+        {
+            parent[vertex] = vertex;
+            rank[vertex] = 0;
+        }
 
-    //     return stronglyConnectedComponents;
-    // }
+        const find = (v) => 
+        {
+            if (parent[v] !== v) parent[v] = find(parent[v]);
+            return parent[v];
+        };
 
+        const union = (v1, v2) => 
+        {
+            const root1 = find(v1);
+            const root2 = find(v2);
+
+            if (root1 !== root2)
+            {
+                if (rank[root1] > rank[root2]) parent[root2] = root1;
+                else if (rank[root1] < rank[root2]) parent[root1] = root2;
+                else
+                {
+                    parent[root2] = root1;
+                    rank[root1]++;
+                }
+            }
+        };
+
+        const mstEdges = [];
+        
+        for (let edge of edges)
+        {
+            const { vertices: [v1, v2], weight } = edge;
+            if (find(v1) !== find(v2)) 
+            {
+                union(v1, v2);
+                mstEdges.push(edge);
+            }
+        }
+
+        return mstEdges;
+    }
+
+    dijkstra(start) {
+        const distances = {};
+        const priorityQueue = new MinPriorityQueue();
+
+        // Инициализация расстояний до всех вершин
+        for (let vertex in this.adjacencyList) {
+            distances[vertex] = Infinity; // Устанавливаем начальные расстояния как бесконечность
+        }
+        distances[start] = 0; // Расстояние до стартовой вершины равно 0
+
+        priorityQueue.enqueue(start, 0); // Добавляем стартовую вершину в очередь с приоритетом 0
+
+        while (!priorityQueue.isEmpty()) {
+            const currentVertex = priorityQueue.dequeue().element;
+
+            for (let neighbor of this.adjacencyList[currentVertex]) {
+                const distance = distances[currentVertex] + neighbor.weight;
+
+                // Если найдено более короткое расстояние до соседней вершины
+                if (distance < distances[neighbor.node]) {
+                    distances[neighbor.node] = distance; // Обновляем расстояние
+                    priorityQueue.enqueue(neighbor.node, distance); // Добавляем в очередь с новым приоритетом
+                }
+            }
+        }
+
+        return distances;
+    }
 }
 
 let graph;
@@ -611,6 +679,10 @@ function handleUserInput()
     {
         switch (choice) 
         {
+            case '0':
+                graph.closeInput();
+                break;
+
             case '1':
                 rl.question('Введите имя вершины: ', (vertex) => 
                 {
@@ -742,7 +814,6 @@ function handleUserInput()
 
                 handleUserInput(); 
                 break;
-
                 
             case '14':
                 rl.question('Введите имя вершины для поиска полустепени исхода: ', (vertex) => 
@@ -767,10 +838,6 @@ function handleUserInput()
                 break;
 
             case '16':
-                graph.closeInput();
-                break;
-
-            case '17':
                 rl.question('Введите имя вершины ОТ которой нужно найти путь: ', (u1) => 
                 {
                     if (!isEmpty(u1))
@@ -798,25 +865,20 @@ function handleUserInput()
                 });
                 break;
 
-            case '18':
-                graph.addVertex('A');
-                graph.addVertex('B');
-                graph.addVertex('C');
-                graph.addVertex('D');
-                graph.addVertex('E');
-
-                graph.addEdge('A', 'B');
-                graph.addEdge('B', 'C');
-                graph.addEdge('C', 'A'); // Цикл между A, B и C
-                graph.addEdge('D', 'E'); // Отдельная компонента
-
-                console.log("Список смежности:", graph.adjacencyList);
-                console.log("Инвертированный список смежности:", graph.transposedList);
-
+            case '17':
                 const scc = graph.findStronglyConnectedComponents();
                 console.log("Сильно связные компоненты:", scc);
+                handleUserInput();
+
                 break;
 
+            case '18':
+                const mst = graph.findMinimumSpanningTree();
+                console.log("Минимальное остовное дерево:", mst);
+
+                handleUserInput();
+                break;
+            
             default:
                 console.log('Неверный выбор. Попробуйте снова.');
                 handleUserInput();
@@ -825,7 +887,6 @@ function handleUserInput()
     });
 }
 
-// Функция для отображения меню
 function showMenu() 
 {
     console.log('\n===================================');
@@ -849,10 +910,12 @@ function showMenu()
     console.log('14. Полустепень исхода орграфа');
     console.log('15. Орграф, являющийся дополнением');
     console.log('-------------------');
-    console.log('17. Обход в глубину');
-    console.log('18. Обход в ширину');
+    console.log('16. Обход в глубину');
+    console.log('17. Обход в ширину');
     console.log('-------------------');
-    console.log('16. Выйти');
+    console.log('18. Минимальное остовное дерево (Краскал)');
+    console.log('-------------------');
+    console.log('0. Выйти');
     console.log('==============================\n');
 }
 
