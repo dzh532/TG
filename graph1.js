@@ -605,36 +605,206 @@ class Graph
             }
         }
 
-        return mstEdges;
-    }
 
-    dijkstra(start) {
+        const mstGraph = new Graph(false, true);
+        
+        for (let edge of mstEdges) 
+        {
+            const [v1, v2] = edge.vertices;
+            mstGraph.addVertex(v1);
+            mstGraph.addVertex(v2);
+            mstGraph.addEdge(v1, v2, edge.weight);
+        }
+
+        return mstGraph;
+    }
+    
+    deikstra(start)
+    {
         const distances = {};
         const priorityQueue = new MinPriorityQueue();
 
-        // Инициализация расстояний до всех вершин
-        for (let vertex in this.adjacencyList) {
-            distances[vertex] = Infinity; // Устанавливаем начальные расстояния как бесконечность
-        }
-        distances[start] = 0; // Расстояние до стартовой вершины равно 0
+        for (let vertex in this.adjacencyList) distances[vertex] = Infinity;
+        
+        distances[start] = 0;
 
-        priorityQueue.enqueue(start, 0); // Добавляем стартовую вершину в очередь с приоритетом 0
+        priorityQueue.enqueue(start, 0);
 
-        while (!priorityQueue.isEmpty()) {
-            const currentVertex = priorityQueue.dequeue().element;
+        while (!priorityQueue.isEmpty()) 
+        {
+            const { element: currentVertex } = priorityQueue.dequeue();
 
-            for (let neighbor of this.adjacencyList[currentVertex]) {
-                const distance = distances[currentVertex] + neighbor.weight;
+            for (let neighbor of this.adjacencyList[currentVertex]) 
+            {
+                const { node: neighborVertex, weight } = neighbor;
+                const newDistance = distances[currentVertex] + weight;
 
                 // Если найдено более короткое расстояние до соседней вершины
-                if (distance < distances[neighbor.node]) {
-                    distances[neighbor.node] = distance; // Обновляем расстояние
-                    priorityQueue.enqueue(neighbor.node, distance); // Добавляем в очередь с новым приоритетом
+                if (newDistance < distances[neighborVertex])
+                {
+                    distances[neighborVertex] = newDistance;
+                    priorityQueue.enqueue(neighborVertex, newDistance);
                 }
             }
         }
 
         return distances;
+    }
+
+    bellmanFord(start) 
+    {
+        const distances = {};
+        const predecessors = {};
+        const hasLoop = {};
+
+        for (let vertex in this.adjacencyList) 
+        {
+            distances[vertex] = Infinity;
+            predecessors[vertex] = null;
+            hasLoop[vertex] = false;
+        }
+        
+        distances[start] = 0;
+
+        // Основной цикл алгоритма
+        for (let i = 0; i < Object.keys(this.adjacencyList).length - 1; i++) 
+        {
+            for (let vertex in this.adjacencyList) 
+            {
+                for (let neighbor of this.adjacencyList[vertex]) 
+                {
+                    const { node: neighborVertex, weight } = neighbor;
+                    if (distances[vertex] + weight < distances[neighborVertex]) 
+                    {
+                        distances[neighborVertex] = distances[vertex] + weight;
+                        predecessors[neighborVertex] = vertex; // Запоминаем предшественника
+                    }
+                }
+            }
+        }
+
+        // Проверка на наличие отрицательных циклов
+        for (let vertex in this.adjacencyList) 
+        {
+            for (let neighbor of this.adjacencyList[vertex]) 
+            {
+                const { node: neighborVertex, weight } = neighbor;
+                if (distances[vertex] + weight < distances[neighborVertex])
+                    throw new Error("Граф содержит отрицательный цикл");
+            
+                if (vertex === neighborVertex)
+                    hasLoop[vertex] = true;
+            }
+        }
+
+        // Формируем пути из предшественников
+        const paths = {};
+        for (let vertex in distances) 
+        {
+            if (distances[vertex] < Infinity) 
+            {
+                const path = this.getPath(predecessors, vertex);
+                if (hasLoop[vertex]) path.push(vertex);
+                else paths[vertex] = path;
+
+                if (path.length === 1 && path[0] === vertex) paths[vertex] = null;
+                else paths[vertex] = path; 
+            } 
+            else paths[vertex] = null; 
+        }
+
+        return { distances, paths };
+    }
+
+    // Вспомогательная функция для формирования пути из предшественников
+    getPath(predecessors, vertex) 
+    {
+        const path = [];
+        while (vertex !== null) 
+        {
+            path.unshift(vertex); // Добавляем вершину в начало пути
+            vertex = predecessors[vertex];
+        }
+        return path;
+    }
+
+    
+    floid(N) 
+    {
+        const vertices = Object.keys(this.adjacencyList);
+        const numVertices = vertices.length;
+
+        // Матрица расстояний
+        const distance = Array.from({ length: numVertices }, () => 
+            Array(numVertices).fill(Infinity)
+        );
+
+        for (let i = 0; i < numVertices; i++) distance[i][i] = 0;
+
+        for (let vertex in this.adjacencyList) 
+        {
+            const index = vertices.indexOf(vertex);
+            for (let edge of this.adjacencyList[vertex])
+            {
+                const neighborIndex = vertices.indexOf(edge.node);
+                distance[index][neighborIndex] = edge.weight; // Установка весов рёбер
+            }
+        }
+
+        // Алгоритм Флойда
+        for (let k = 0; k < numVertices; k++) 
+        {
+            for (let i = 0; i < numVertices; i++) 
+            {
+                for (let j = 0; j < numVertices; j++) 
+                {
+                    if (distance[i][j] > distance[i][k] + distance[k][j])
+                        distance[i][j] = distance[i][k] + distance[k][j];
+                }
+            }
+        }
+
+        // Проверка на наличие подходящей вершины
+        for (let i = 0; i < numVertices; i++) 
+        {
+            let allPathsValid = true;
+            for (let j = 0; j < numVertices; j++) 
+            {
+                if (i !== j && distance[i][j] > N) 
+                {
+                    allPathsValid = false;
+                    break;
+                }
+            }
+
+            if (allPathsValid) return { vertex: vertices[i], distances: distance[i] };
+        }
+
+        return null; // Вершина не найдена
+    }
+}
+
+class MinPriorityQueue 
+{
+    constructor() 
+    {
+        this.elements = [];
+    }
+
+    enqueue(element, priority) 
+    {
+        this.elements.push({ element, priority });
+        this.elements.sort((a, b) => a.priority - b.priority);
+    }
+
+    dequeue() 
+    {
+        return this.elements.shift();
+    }
+
+    isEmpty() 
+    {
+        return this.elements.length === 0;
     }
 }
 
@@ -662,6 +832,17 @@ function isEmpty(vertex)
 {
     const isEmp = vertex => vertex.trim() === '';
     return isEmp(vertex);
+}
+
+function isVertexInGraph(v)
+{
+    if (!graph.adjacencyList[v]) 
+    {
+        console.log(`Вершины ${v} не существует.`);
+        handleUserInput();
+        return false;
+    }
+    else return true;
 }
 
 function emptyElse()
@@ -873,12 +1054,91 @@ function handleUserInput()
                 break;
 
             case '18':
-                const mst = graph.findMinimumSpanningTree();
-                console.log("Минимальное остовное дерево:", mst);
+                graph = graph.findMinimumSpanningTree();
+                console.log("Минимальное остовное дерево: \n", graph.toString());
 
                 handleUserInput();
                 break;
-            
+        
+            case '19':
+                if (graph.hasVertices()) 
+                {
+                    console.log("Граф пустой!");
+                    handleUserInput();
+                }
+                else
+                {
+                    rl.question('Введите имя вершины, с которой нужно начать: ', (v) => 
+                    {
+                        if (!isEmpty(v))
+                        {
+                            if (isVertexInGraph(v))
+                            {
+                                console.log(`Длины кратч. путей от ${v} до всех остальных вершин`);
+                                const shortestPaths = graph.deikstra(v);
+                                console.log(shortestPaths);
+                                handleUserInput();
+                            }
+                        }
+                        else emptyElse();
+                    });
+                }
+
+                break;
+
+            case '20':
+                if (graph.hasVertices()) 
+                {
+                    console.log("Граф пустой!");
+                    handleUserInput();
+                }
+                else
+                {
+                    rl.question('Введите имя вершины, с которой нужно начать: ', (v) => 
+                    {
+                        if (!isEmpty(v))
+                        {
+                            if (isVertexInGraph(v))
+                            {
+                                console.log(`Кратч. пути из вершины ${v} во все остальные вершины: `);
+                                const result = graph.bellmanFord(v);
+                                console.log(result.paths);
+
+                                handleUserInput();
+                            }
+                        }
+                        else emptyElse();
+                    });
+                }
+                break;
+
+            case '21':
+                if (graph.hasVertices()) 
+                {
+                    console.log("Граф пустой!");
+                    handleUserInput();
+                }
+                else
+                {
+                    rl.question('Введите число N: ', (N) => 
+                    {
+                        if (!isEmpty(N))
+                        {
+                            console.log(`Вершина, каждая из минимальных стоимостей пути от которой до остальных не превосходит ${N}: `);
+                            const result = graph.floid(N);
+                            if (result)
+                            {
+                                console.log(`Вершина: ${result.vertex}`);
+                                console.log(`Расстояния от этой вершины:`, result.distances);
+                            }
+                            else console.log('Вершина не найдена');
+                            handleUserInput();
+                        }
+                        else emptyElse();
+                    });
+                }
+                break;
+                
             default:
                 console.log('Неверный выбор. Попробуйте снова.');
                 handleUserInput();
@@ -914,6 +1174,9 @@ function showMenu()
     console.log('17. Обход в ширину');
     console.log('-------------------');
     console.log('18. Минимальное остовное дерево (Краскал)');
+    console.log('19. Длины кратч. путей от u до всех остальных вершин (Дейкстры)');
+    console.log('20. Кратч. пути из вершины u во все остальные вершины (Беллмана-Форда)');
+    console.log('21. Вершина, каждая из минимальных стоимостей пути от которой до остальных не превосходит N (Флойд)');
     console.log('-------------------');
     console.log('0. Выйти');
     console.log('==============================\n');
