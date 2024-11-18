@@ -21,16 +21,160 @@ class Graph
 
     isGraph() 
     {
-        if (this.directed)
+        const direction = this.directed ? "ориентированный" : "НЕориентированный";
+        const weight = this.weighted ? "взвешенный" : "НЕвзвешенный";
+        return `${direction} | ${weight}`;
+    }
+
+//     // Добавление вершины
+//     addVertex(vertex){...}
+
+//     // Добавление ребра
+//     addEdge(edgeFrom, edgeTo, weight = 1) {...}
+
+    
+//     // Удаление вершины
+//     removeVertex(vertex){...}
+
+//     // Удаление ребра
+//     removeEdge(edgeFrom, edgeTo){...}
+
+//     // Вывод списка смежности
+//     toString(){...}
+// }
+    
+    // Добавление вершины
+    addVertex(vertex) 
+    {
+        if (!this.adjacencyList[vertex])
         {
-            if (this.weighted) return "ориентированный | взвешенный";
-            else return "ориентированный | НЕвзвешенный";
+            this.adjacencyList[vertex] = [];
+            console.log(`Вершина ${vertex} добавлена.`);
+            this.transposedList[vertex] = [];
         }
-        else 
+        else console.log(`Вершина "${vertex}" уже существует`);
+    }
+
+    // Добавление ребра
+    addEdge(edgeFrom, edgeTo, weight = 1) 
+    {
+        let ok = true;
+        if (!this.adjacencyList[edgeFrom])
         {
-            if (this.weighted) return "НЕориентированный | взвешенный";
-            else return "НЕориентированный | НЕвзвешенный";
+            console.log(`Вершины ${edgeFrom} не существует`);
+            ok = false;
         }
+
+        if (!this.adjacencyList[edgeTo])
+        {
+            console.log(`Вершины ${edgeTo} не существует`);
+            ok = false;
+        }
+        if (ok)
+        {
+            const edgeExists = this.adjacencyList[edgeFrom].some(edge => edge.node === edgeTo);
+            if (!edgeExists)
+            {
+                if (this.weighted)
+                {
+                        this.adjacencyList[edgeFrom].push({ node: edgeTo, weight });
+                        this.transposedList[edgeTo].push({ node: edgeFrom }); // в инвертированный граф
+
+                    
+                        if (!this.directed)
+                        {
+                            this.adjacencyList[edgeTo].push({ node: edgeFrom, weight });
+                            this.transposedList[edgeFrom].push({ node: edgeTo }); // в инвертированный граф
+
+                        }
+                        console.log(`Ребро от ${edgeFrom} до ${edgeTo} с весом ${weight} добавлено.`);
+                }
+                else
+                {
+                    this.adjacencyList[edgeFrom].push({ node: edgeTo});
+                    this.transposedList[edgeTo].push({ node: edgeFrom }); // в инвертированный граф
+                
+                    if (!this.directed)
+                    {
+                        this.adjacencyList[edgeTo].push({ node: edgeFrom});
+                        this.transposedList[edgeFrom].push({ node: edgeTo }); // в инвертированный граф
+                    }
+
+                    console.log(`Ребро от ${edgeFrom} до ${edgeTo} добавлено.`);
+                }
+            }
+            else console.log(`Данное ребро уже существует`);
+        }
+    }
+
+    // Удаление вершины
+    removeVertex(vertex) 
+    {
+        if (!this.adjacencyList[vertex])
+            console.log(`Вершины ${vertex} не существует.`);
+        else
+        {
+            delete this.adjacencyList[vertex];
+            
+            for (const key in this.adjacencyList)
+                this.adjacencyList[key] = this.adjacencyList[key].filter(edge => edge.node !== vertex);
+
+            console.log(`Вершина ${vertex} удалена.`);
+        }
+    }
+
+    // Удаление ребра
+    removeEdge(edgeFrom, edgeTo) 
+    {
+        let ok = true;
+
+        if (!this.adjacencyList[edgeFrom])
+        {
+            console.log(`Вершины ${edgeFrom} не существует.`);
+            ok = false;
+        }
+
+        if (!this.adjacencyList[edgeTo])
+        {
+            console.log(`Вершины ${edgeTo} не существует.`);
+            ok = false;
+        }
+
+        if (ok)
+        {
+            const edgeExists = this.adjacencyList[edgeFrom].some(edge => edge.node === edgeTo);
+            if (edgeExists)
+            {
+                if (this.adjacencyList[edgeFrom])
+                    this.adjacencyList[edgeFrom] = this.adjacencyList[edgeFrom].filter(edge => edge.node !== edgeTo);
+                
+                if (this.transposedList[edgeTo])
+                    this.transposedList[edgeTo] = this.transposedList[edgeTo].filter(edge => edge.node !== edgeFrom);
+
+                if (!this.directed && this.adjacencyList[edgeTo])
+                    this.adjacencyList[edgeTo] = this.adjacencyList[edgeTo].filter(edge => edge.node !== edgeFrom);
+
+                console.log(`Ребро от ${edgeFrom} до ${edgeTo} удалено.`);
+            }
+            else console.log(`Данного ребра не существует`);
+        }
+    }
+
+    // Вывод списка смежности
+    toString() 
+    {
+        let result = '';
+        if (this.weighted)
+        {
+            for (const vertex in this.adjacencyList)
+                result += `${vertex} -> ${this.adjacencyList[vertex].map(edge => `${edge.node} (${edge.weight})`).join(', ')}\n`;
+        }
+        else
+        {
+            for (const vertex in this.adjacencyList)
+                result += `${vertex} -> ${this.adjacencyList[vertex].map(edge => `${edge.node}`).join(', ')}\n`;
+        }
+        return result;
     }
 
     static async fromFile(filePath) 
@@ -201,141 +345,6 @@ class Graph
             }
         }
         return graph;
-    }
-
-
-    // Добавление вершины
-    addVertex(vertex) 
-    {
-        if (!this.adjacencyList[vertex])
-        {
-            this.adjacencyList[vertex] = [];
-            console.log(`Вершина ${vertex} добавлена.`);
-            this.transposedList[vertex] = [];
-        }
-        else console.log(`Вершина "${vertex}" уже существует`);
-    }
-
-    // Добавление ребра
-    addEdge(edgeFrom, edgeTo, weight = 1) 
-    {
-        let ok = true;
-        if (!this.adjacencyList[edgeFrom])
-        {
-            console.log(`Вершины ${edgeFrom} не существует`);
-            ok = false;
-        }
-
-        if (!this.adjacencyList[edgeTo])
-        {
-            console.log(`Вершины ${edgeTo} не существует`);
-            ok = false;
-        }
-        if (ok)
-        {
-            const edgeExists = this.adjacencyList[edgeFrom].some(edge => edge.node === edgeTo);
-            if (!edgeExists)
-            {
-                if (this.weighted)
-                {
-                        this.adjacencyList[edgeFrom].push({ node: edgeTo, weight });
-                        this.transposedList[edgeTo].push({ node: edgeFrom }); // в инвертированный граф
-
-                    
-                        if (!this.directed)
-                        {
-                            this.adjacencyList[edgeTo].push({ node: edgeFrom, weight });
-                            this.transposedList[edgeFrom].push({ node: edgeTo }); // в инвертированный граф
-
-                        }
-                        console.log(`Ребро от ${edgeFrom} до ${edgeTo} с весом ${weight} добавлено.`);
-                }
-                else
-                {
-                    this.adjacencyList[edgeFrom].push({ node: edgeTo});
-                    this.transposedList[edgeTo].push({ node: edgeFrom }); // в инвертированный граф
-                
-                    if (!this.directed)
-                    {
-                        this.adjacencyList[edgeTo].push({ node: edgeFrom});
-                        this.transposedList[edgeFrom].push({ node: edgeTo }); // в инвертированный граф
-                    }
-
-                    console.log(`Ребро от ${edgeFrom} до ${edgeTo} добавлено.`);
-                }
-            }
-            else console.log(`Данное ребро уже существует`);
-        }
-    }
-
-    // Удаление вершины
-    removeVertex(vertex) 
-    {
-        if (!this.adjacencyList[vertex])
-            console.log(`Вершины ${vertex} не существует.`);
-        else
-        {
-            delete this.adjacencyList[vertex];
-            
-            for (const key in this.adjacencyList)
-                this.adjacencyList[key] = this.adjacencyList[key].filter(edge => edge.node !== vertex);
-
-            console.log(`Вершина ${vertex} удалена.`);
-        }
-    }
-
-    // Удаление ребра
-    removeEdge(edgeFrom, edgeTo) 
-    {
-        let ok = true;
-
-        if (!this.adjacencyList[edgeFrom])
-        {
-            console.log(`Вершины ${edgeFrom} не существует.`);
-            ok = false;
-        }
-
-        if (!this.adjacencyList[edgeTo])
-        {
-            console.log(`Вершины ${edgeTo} не существует.`);
-            ok = false;
-        }
-
-        if (ok)
-        {
-            const edgeExists = this.adjacencyList[edgeFrom].some(edge => edge.node === edgeTo);
-            if (edgeExists)
-            {
-                if (this.adjacencyList[edgeFrom])
-                    this.adjacencyList[edgeFrom] = this.adjacencyList[edgeFrom].filter(edge => edge.node !== edgeTo);
-                
-                if (this.transposedList[edgeTo])
-                    this.transposedList[edgeTo] = this.transposedList[edgeTo].filter(edge => edge.node !== edgeFrom);
-
-                if (!this.directed && this.adjacencyList[edgeTo])
-                    this.adjacencyList[edgeTo] = this.adjacencyList[edgeTo].filter(edge => edge.node !== edgeFrom);
-
-                console.log(`Ребро от ${edgeFrom} до ${edgeTo} удалено.`);
-            }
-            else console.log(`Данного ребра не существует`);
-        }
-    }
-
-    // Вывод списка смежности
-    toString() 
-    {
-        let result = '';
-        if (this.weighted)
-        {
-            for (const vertex in this.adjacencyList)
-                result += `${vertex} -> ${this.adjacencyList[vertex].map(edge => `${edge.node} (${edge.weight})`).join(', ')}\n`;
-        }
-        else
-        {
-            for (const vertex in this.adjacencyList)
-                result += `${vertex} -> ${this.adjacencyList[vertex].map(edge => `${edge.node}`).join(', ')}\n`;
-        }
-        return result;
     }
 
     hasVertices() 
@@ -782,6 +791,99 @@ class Graph
 
         return null; // Вершина не найдена
     }
+
+    // Максимальный поток
+    maxFlow(source, sink) 
+    {
+        const residualGraph = this.createResidualGraph();
+        let maxFlow = 0;
+
+        while (true)
+        {
+            const parent = this.bfs(residualGraph, source, sink);
+            if (!parent) break; // Если нет увеличивающего пути, выходим из цикла
+
+            // Находим минимальную пропускную способность по найденному пути
+            let pathFlow = Infinity;
+            for (let v = sink; v !== source; v = parent[v]) 
+            {
+                const u = parent[v];
+                const edge = residualGraph[u].find(edge => edge.node === v);
+                pathFlow = Math.min(pathFlow, edge.weight);
+            }
+
+            // Обновляем остаточный граф и общий поток
+            for (let v = sink; v !== source; v = parent[v]) 
+            {
+                const u = parent[v];
+                this.updateResidualGraph(residualGraph, u, v, pathFlow);
+            }
+
+            maxFlow += pathFlow;
+        }
+
+        return maxFlow;
+    }
+
+    createResidualGraph() 
+    {
+        const residualGraph = {};
+        for (const u in this.adjacencyList) 
+        {
+            residualGraph[u] = [];
+            for (const edge of this.adjacencyList[u]) 
+            {
+                residualGraph[u].push({ node: edge.node, weight: edge.weight });
+            }
+        }
+        return residualGraph;
+    }
+
+    bfs(residualGraph, source, sink) 
+    {
+        const visited = {};
+        const queue = [source];
+        const parent = {};
+
+        visited[source] = true;
+
+        while (queue.length > 0) 
+        {
+            const u = queue.shift();
+
+            for (const edge of residualGraph[u]) 
+            {
+                if (!visited[edge.node] && edge.weight > 0) // Остаточная пропускная способность положительна 
+                { 
+                    visited[edge.node] = true;
+                    parent[edge.node] = u;
+
+                    if (edge.node === sink) return parent; // Если достигли стока
+                    queue.push(edge.node);
+                }
+            }
+        }
+
+        return null; // Если не нашли путь
+    }
+
+    updateResidualGraph(residualGraph, u, v, flow) 
+    {
+        // Уменьшаем остаточную пропускную способность
+        const forwardEdge = residualGraph[u].find(edge => edge.node === v);
+        forwardEdge.weight -= flow;
+
+        // Добавляем обратное ребро
+        let backwardEdge = residualGraph[v].find(edge => edge.node === u);
+        if (backwardEdge) 
+        {
+            backwardEdge.weight += flow;
+        } 
+        else 
+        {
+            residualGraph[v].push({ node: u, weight: flow });
+        }
+    }
 }
 
 class MinPriorityQueue 
@@ -1138,7 +1240,27 @@ function handleUserInput()
                     });
                 }
                 break;
-                
+        
+            case '22':
+                rl.question('Введите исток: ', (v1) => 
+                {
+                    if (!isEmpty(v1))
+                    {
+                        rl.question('Введите сток: ', (v2) => 
+                        {
+                            if (!isEmpty(v2))
+                            {
+                                const maxFlowValue = graph.maxFlow(v1, v2);
+                                console.log(`Максимальный поток в графе от ${v1} до ${v2}: ${maxFlowValue}`); // 10
+                                handleUserInput();
+                            }
+                            else emptyElse();
+                        });
+                    }
+                    else emptyElse();
+                });
+                break;
+        
             default:
                 console.log('Неверный выбор. Попробуйте снова.');
                 handleUserInput();
@@ -1177,6 +1299,7 @@ function showMenu()
     console.log('19. Длины кратч. путей от u до всех остальных вершин (Дейкстры)');
     console.log('20. Кратч. пути из вершины u во все остальные вершины (Беллмана-Форда)');
     console.log('21. Вершина, каждая из минимальных стоимостей пути от которой до остальных не превосходит N (Флойд)');
+    console.log('22. Максимальный поток');
     console.log('-------------------');
     console.log('0. Выйти');
     console.log('==============================\n');
